@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example 
+
+.venv/
+venv/
+ENV/
+env/
+
+pycache/
+*.py[cod]
+*.pyo
+*.log
