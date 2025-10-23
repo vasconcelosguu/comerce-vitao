@@ -1,4 +1,7 @@
+fastapi
+uvicorn
 SQLAlchemy>=2.0
 PyMySQL
 python-dotenv
-cryptography
+pydantic
+passlib[bcrypt]
