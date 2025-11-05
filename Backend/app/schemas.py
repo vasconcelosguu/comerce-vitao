@@ -1,35 +1,59 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from typing import Optional, List
 
 class UserCreate(BaseModel):
-    name: str = Field(..., min_length = 1)
-    email: str = EmailStr
-    password: str = Field(..., min_length = 6)
+    name: str = Field(..., min_length=1)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
 
 class UserOut(BaseModel):
-    id: int 
+    model_config = ConfigDict(from_attributes=True)
+    id: int
     name: str
-    class Config:
-        from_attributes = True
+    email: EmailStr
 
 class CategoryIn(BaseModel):
-    name: str = Field(..., min_length = 1)
+    name: str = Field(..., min_length=1)
 
 class CategoryOut(BaseModel):
-    id: int 
+    model_config = ConfigDict(from_attributes=True)
+    id: int
     name: str
-    class Config:
-        from_attributes = True
 
 class ProductIn(BaseModel):
-    name: str 
+    name: str
     description: Optional[str] = ""
     price: float
     stock: int
     category_id: int
 
 class ProductOut(BaseModel):
-    id: int 
+    model_config = ConfigDict(from_attributes=True)
+    id: int
     name: str
-    class Config:
-        from_attributes = True
+    description: Optional[str] = ""
+    price: float
+    stock: int
+    category_id: int
+
+class OrderItemIn(BaseModel):
+    product_id: int
+    quantity: int = Field(..., gt=0)
+
+class OrderCreate(BaseModel):
+    user_id: int
+    items: List[OrderItemIn]
+
+class OrderItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    product_id: int
+    quantity: int
+    unit_price: float
+
+class OrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    user_id: int
+    status: str
+    total: float
+    items: List[OrderItemOut]
