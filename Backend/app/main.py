@@ -1,7 +1,7 @@
 from typing import List
 import os
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Query, status
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -186,3 +186,67 @@ def list_orders(db: Session = Depends(get_db)):
             )
         )
     return result
+
+@app.get("/reports/top-categories")
+def report_top_categories(limit: int = Query(5, gt=0, le=100), db: Session = Depends(get_db)):
+    sql = text("""
+        SELECT
+            c.id AS category_id,
+            c.name AS category_name,
+            COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS revenue,
+            COUNT(DISTINCT o.id) AS orders_count
+        FROM categories c
+        LEFT JOIN products p ON p.category_id = c.id
+        LEFT JOIN order_items oi ON oi.product_id = p.id
+        LEFT JOIN orders o ON o.id = oi.order_id
+        GROUP BY c.id, c.name
+        ORDER BY revenue DESC
+        LIMIT :limit_val
+    """)
+    rows = db.execute(sql, {"limit_val": limit}).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/reports/top-users")
+def report_top_users(limit: int = Query(5, gt=0, le=100), db: Session = Depends(get_db)):
+    sql = text("""
+        SELECT
+            u.id   AS user_id,
+            u.name AS user_name,
+            u.email AS user_email,
+            COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS spent,
+            COUNT(DISTINCT o.id) AS orders_count
+        FROM users u
+        LEFT JOIN orders o ON o.user_id = u.id AND o.status <> 'CANCELLED'
+        LEFT JOIN order_items oi ON oi.order_id = o.id
+        GROUP BY u.id, u.name, u.email
+        ORDER BY spent DESC
+        LIMIT :limit_val
+    """)
+    rows = db.execute(sql, {"limit_val": limit}).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/reports/low-stock")
+def report_low_stock(threshold: int = Query(5, ge=0), db: Session = Depends(get_db)):
+    sql = text("""
+        SELECT id, name, stock
+        FROM products
+        WHERE stock <= :thr
+        ORDER BY stock ASC, id ASC
+    """)
+    rows = db.execute(sql, {"thr": threshold}).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/reports/products-without-orders")
+def report_products_without_orders(db: Session = Depends(get_db)):
+    sql = text("""
+        SELECT p.id, p.name, p.stock
+        FROM products p
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM order_items oi
+            WHERE oi.product_id = p.id
+        )
+        ORDER BY p.id ASC
+    """)
+    rows = db.execute(sql).mappings().all()
+    return [dict(r) for r in rows]
